@@ -21,6 +21,11 @@ BatchPayoutJob also never checks that the payments are approved, an A01 vulnerab
 BankTransferException contains an A06 vulnerability, where the full stack trace is printed to the error message. Should this exception be propagated to the user, they could gain knowledge of the internal functionality of the system. The fix is to print a pruned error message instead of the stack trace. The internal details will be maintained for logging purposes, but not reported to the user.
 
 WebhookController.java contains A01: Broken Access Control, A08: Software and Data Integrity Failures. Since the endpoint has no authentication or signature verification, anyone on the internet who knows or guesses the URL can POST arbitrary payout/status values and force markSettled to mark any payout as settled. Thus, attackers could mark their own unpaid or rejected payout as "settled". The fix is to have the webhook provider sign their payloads (e.g., HMAC signature header) so the receiver can verify the request actually came from the trusted source.
+
+WebhookController.java contains A03: Injection / Improper Input Validation. event.getStatus() is a raw, unvalidated String passed into markSettled. Downstream, PayoutRepository uses this string and could build a query, log statement, or shell/command call, which could enable SQL injection, log injection, or unexpected state transitions. The fix is to use an enum for PayoutStatus so that event.getStatus() can be validated against valid enum states.
+
+WebhookController.java contains A09: Security Logging and Monitoring Failures. No logging of incoming webhook calls is present, so a forged or replayed request would leave no audit trail. The fix is to include logged warnings to alert when a request signature is incorrect, when status or id is null, and when the request does go through properly.
+
 ---
 
 ## Remediation Priority
