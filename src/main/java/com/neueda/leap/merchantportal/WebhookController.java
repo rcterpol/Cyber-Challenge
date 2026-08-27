@@ -1,6 +1,8 @@
 package com.neueda.leap.merchantportal;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +17,7 @@ import java.util.HexFormat;
 @RestController
 public class WebhookController {
 
+    private static final Logger log = LoggerFactory.getLogger(WebhookController.class);
     private static final String HMAC_ALGORITHM = "HmacSHA256";
 
     private final PayoutStatusUpdater payoutStatusUpdater;
@@ -35,11 +38,19 @@ public class WebhookController {
             @RequestHeader("X-Signature") String signatureHeader) throws Exception {
 
         if (!isValidSignature(rawBody, signatureHeader)) {
+            log.warn("Rejected payment-status webhook: invalid signature");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
         PaymentStatusEvent event = objectMapper.readValue(rawBody, PaymentStatusEvent.class);
+        if (event.getPayoutId() == null || event.getStatus() == null) {
+            log.warn("Rejected payment-status webhook: missing payoutId or status");
+            return ResponseEntity.badRequest().build();
+        }
+
         payoutStatusUpdater.markSettled(event.getPayoutId(), event.getStatus());
+        log.info("Processed payment-status webhook for payoutId={} status={}",
+                event.getPayoutId(), event.getStatus());
         return ResponseEntity.ok().build();
     }
 
@@ -54,4 +65,5 @@ public class WebhookController {
                 signatureHeader.getBytes(StandardCharsets.UTF_8));
     }
 }
+
 

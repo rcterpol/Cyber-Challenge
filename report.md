@@ -24,6 +24,7 @@ WebhookController.java contains A01: Broken Access Control, A08: Software and Da
 
 WebhookController.java contains A03: Injection / Improper Input Validation. event.getStatus() is a raw, unvalidated String passed into markSettled. Downstream, PayoutRepository uses this string and could build a query, log statement, or shell/command call, which could enable SQL injection, log injection, or unexpected state transitions. The fix is to use an enum for PayoutStatus so that event.getStatus() can be validated against valid enum states.
 
+WebhookController.java contains A09: Security Logging and Monitoring Failures. No logging of incoming webhook calls is present, so a forged or replayed request would leave no audit trail. The fix is to include logged warnings to alert when a request signature is incorrect, when status or id is null, and when the request does go through properly.
 
 ---
 
