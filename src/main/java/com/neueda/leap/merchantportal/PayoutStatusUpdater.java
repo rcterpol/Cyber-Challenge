@@ -1,5 +1,5 @@
 package com.neueda.leap.merchantportal;
 
 public interface PayoutStatusUpdater {
-    void markSettled(Long payoutId, String status);
+    void markSettled(Long payoutId, PayoutStatus status);
 }
