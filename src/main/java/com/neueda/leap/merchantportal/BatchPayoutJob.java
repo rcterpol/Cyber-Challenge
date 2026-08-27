@@ -16,13 +16,19 @@ public class BatchPayoutJob {
 
     public void runNightlyBatch(List<PayoutRequest> approvedPayouts) {
         for (PayoutRequest payout : approvedPayouts) {
+            // Never transfer funds for a payout that hasn't actually completed approval
+            if (!"APPROVED".equals(payout.getApprovalStatus())) {
+                log.warn("Skipping payout {} with unexpected status {}",
+                        payout.getId(), payout.getApprovalStatus());
+                continue;
+            }
             try {
                 bankTransferClient.transfer(payout.getMerchantId(), payout.getAmount());
                 payout.setApprovalStatus("PAID");
             } catch (BankTransferException e) {
-                log.warn("Transfer failed for payout {}, marking paid anyway: {}",
+                log.warn("Transfer failed for payout {}: {}",
                         payout.getId(), e.getMessage());
-                payout.setApprovalStatus("PAID");
+                payout.setApprovalStatus("REJECTED");
             }
             payoutRepository.save(payout);
         }
