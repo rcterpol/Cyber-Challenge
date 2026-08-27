@@ -20,6 +20,10 @@ BatchPayoutJob also never checks that the payments are approved, an A01 vulnerab
 
 BankTransferException contains an A06 vulnerability, where the full stack trace is printed to the error message. Should this exception be propagated to the user, they could gain knowledge of the internal functionality of the system. The fix is to print a pruned error message instead of the stack trace. The internal details will be maintained for logging purposes, but not reported to the user.
 
+PayoutApprovalService.java contains an A01 vulnerability. There is no authorization as to who can approve payments, so a user could approve their own payment, which is not allowed. The fix is to check whether the approvingUserId is equal to requestedByUserId and only allow if they are not equal.
+
+PayoutApprovalService.java contains an A08 vulnerability. The payout's approvalStatus is unconditionally set to "APPROVED" even when it is already approved or rejected. The fix is only allow approvalStatus of PENDING to go through to be approved.
+
 WebhookController.java contains A01: Broken Access Control, A08: Software and Data Integrity Failures. Since the endpoint has no authentication or signature verification, anyone on the internet who knows or guesses the URL can POST arbitrary payout/status values and force markSettled to mark any payout as settled. Thus, attackers could mark their own unpaid or rejected payout as "settled". The fix is to have the webhook provider sign their payloads (e.g., HMAC signature header) so the receiver can verify the request actually came from the trusted source.
 
 WebhookController.java contains A03: Injection / Improper Input Validation. event.getStatus() is a raw, unvalidated String passed into markSettled. Downstream, PayoutRepository uses this string and could build a query, log statement, or shell/command call, which could enable SQL injection, log injection, or unexpected state transitions. The fix is to use an enum for PayoutStatus so that event.getStatus() can be validated against valid enum states.
